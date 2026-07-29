@@ -1,10 +1,6 @@
 from cleaning import run_pipeline
 from db_manager import DatabaseManager
-import os
-import pandas as pd
-from dotenv import load_dotenv
-
-load_dotenv()
+from config import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASS
 
 
 def main():
@@ -16,11 +12,11 @@ def main():
     accounts = clean_df[["account_id", "account_size"]].drop_duplicates()
 
     db = DatabaseManager(
-        user="postgres",
-        password=os.getenv("DB_PASSWORD"),
-        host="localhost",
-        port="5432",
-        dbname="trading_journal"
+        user=DB_USER,
+        password=DB_PASS,
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME
     )
 
     db.insert_dataframe(df=accounts, table_name="accounts")

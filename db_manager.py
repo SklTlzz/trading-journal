@@ -13,4 +13,3 @@ class DatabaseManager:
         """
 
         df.to_sql(name=table_name, con=self.engine, if_exists="append", index=False)
-        print(f"Table {table_name} succesfully updated!")
