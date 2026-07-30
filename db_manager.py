@@ -9,7 +9,14 @@ class DatabaseManager:
 
     def insert_dataframe(self, df: pd.DataFrame, table_name: str):
         """
-            Метод для загрузки датафрейма в таблицу
+        Загружает датафрейм в таблицу
+
+        Args:
+            df: pd.DataFrame - предварительно очищенный датафрейм
+            table_name: str - название таблицы, в которую загружать данные
+        
+        Returns:
+            None - метод только записывает данные в БД
         """
 
         df.to_sql(name=table_name, con=self.engine, if_exists="append", index=False)

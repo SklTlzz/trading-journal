@@ -13,3 +13,7 @@ DB_PASS = os.getenv("DB_PASSWORD")
 ALL_ACCOUNTS_SUM_SIZE = 40_000  # Сумма купленных счетов (5к + 10к + 25к)
 ACCOUNTS_IDS = {5000: 1, 10000: 2, 25000: 3}  # Словарь с ID аккаунтов для заполнения колонки account_id
 SPLIT_ACCOUNTS = {5000: [5000], 10000: [10000], 15000: [5000, 10000], 25000: [25000], 40000: [5000, 10000, 25000]}  # Словарь для разбиения скомбинированных счетов в реальные счета
+DAYS_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+SESSIONS_ORDER = ["Asia", "Frankfurt", "London", "New York"]
+PROFIT_PNL_SYMBS = {"Profit": "$", "PNL": "%"}
+COUNTER_TREND = {"Long": "Down", "Short": "Up"}

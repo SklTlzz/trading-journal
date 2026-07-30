@@ -4,6 +4,10 @@ from config import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASS
 
 
 def main():
+    """
+    Заполняет БД очищенными данными
+    """
+
     clean_df = run_pipeline()
 
     trades = clean_df.copy()

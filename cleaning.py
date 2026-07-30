@@ -6,7 +6,13 @@ from config import ALL_ACCOUNTS_SUM_SIZE, ACCOUNTS_IDS, SPLIT_ACCOUNTS
 
 def load_and_prepare_data(data_path: str) -> pd.DataFrame:
     """
-        Функция подготовки и загрузки вводных данных
+    Подготавливает и загружает вводные данные
+
+    Args:
+        data_path: str - название папки, где лежат сырые данные
+    
+    Returns:
+        pd.DataFrame - исходный, грязный датафрейм
     """
 
     all_dataframes = []
@@ -28,7 +34,13 @@ def load_and_prepare_data(data_path: str) -> pd.DataFrame:
 
 def set_account_info(df: pd.DataFrame) -> pd.DataFrame:
     """
-        Функция для установки ID аккаунта и его размера (в долларах)
+    Устанавливает размер аккаунта
+
+    Args:
+        df: pd.DataFrame - исходный датафрейм
+    
+    Returns:
+        pd.DataFrame - датафрейм c имеющейся колонкой "account_size"
     """
 
     may_account_mask = (df["Date"].dt.month_name().str.lower() == "may") & (df["Date"].dt.year == 2026)
@@ -45,7 +57,13 @@ def set_account_info(df: pd.DataFrame) -> pd.DataFrame:
 
 def recover_profit(df: pd.DataFrame) -> pd.DataFrame:
     """
-        Функция для восстановления отсутствующих колонок 'Profit' и 'PNL'
+    Восстанавливает отсутствующие колонки "Profit" и "PNL"
+
+    Args:
+        df: pd.DataFrame - исходный датафрейм
+    
+    Returns:
+        pd.DataFrame - датафрейм c восставновленными "Profit" и "PNL" 
     """
 
     mask_win = df["PNL"].isna() & (df["Win?"] == "Yes")
@@ -59,7 +77,13 @@ def recover_profit(df: pd.DataFrame) -> pd.DataFrame:
 
 def clean_folder_name(df: pd.DataFrame) -> pd.DataFrame:
     """
-        Функция для решения проблемы c измененным названием папок (начиная c июня папки называются в виде: RWA-<account_size>)
+    Обрабатывает названия папок вида "RWA-10k", оставляя в колонке класса актива только "RWA"
+    
+    Args:
+        df: pd.DataFrame - обработанный раннее датафрейм
+    
+    Returns:
+        pd.DataFrame - датафрейм, в котором класс активов называется как надо
     """
     
     mask_rwa = df["asset_type"].str.contains("RWA")
@@ -72,19 +96,32 @@ def clean_folder_name(df: pd.DataFrame) -> pd.DataFrame:
 
 def filter_crypto(df: pd.DataFrame) -> pd.DataFrame:
     """
-        Функция для фильтрации сделок Crypto и RWA (в папке вида "RWA-<account_size>" есть как минимум 1 сделка по Crypto)
+    Устанавливает класс активов "Crypto"
+    На 10к счете у меня доступна торговля и криптой, и RWA, на остальных счетах только RWA
+
+    Args:
+        df: pd.DataFrame - обработанный раннее датафрейм
+    
+    Returns:
+        pd.DataFrame - датафрейм, в котором установлен класс активов и размер аккаунта для крипты
     """
 
     mask_crypto = df["Pair"].str.endswith("USDT")
 
     df.loc[mask_crypto, "asset_type"] = "Crypto"
-    df.loc[mask_crypto, "account_size"] = 10000.0  # Торговля криптой у меня доступна только на 10к счете, на остальных только RWA
+    df.loc[mask_crypto, "account_size"] = 10000.0
 
     return df
 
 def spliting_accounts(df: pd.DataFrame) -> pd.DataFrame:
     """
-        Функция для разделения счетов, которые склеились (15к и 40к), на соответствующие 5к, 10к и 25к
+    Разделяет счета, которые склеились (15к и 40к), на соответствующие 5к, 10к и 25к
+
+    Args:
+        df: pd.DataFrame - обработанный раннее датафрейм
+    
+    Returns:
+        pd.DataFrame - датафрейм, в котором склеившиеся счета, разбиты
     """
 
     df["account_size"] = df["account_size"].astype(int)
@@ -104,7 +141,7 @@ def spliting_accounts(df: pd.DataFrame) -> pd.DataFrame:
 
 def run_pipeline() -> pd.DataFrame:
     """
-        Главная функция для запуска очистки данных
+    Запускает очистку данных
     """
 
     df = load_and_prepare_data(data_path="data")
