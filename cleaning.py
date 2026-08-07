@@ -29,6 +29,7 @@ def load_and_prepare_data(data_path: str) -> pd.DataFrame:
     all_dataframes["Day"] = all_dataframes["Date"].dt.day_name()  # Восстанавливаем данные по дням
     all_dataframes["Risk"] = all_dataframes["Risk"].str.replace("%", "").astype(float)  # Приводим колонку "Risk" к числовому формату
     all_dataframes["RR"] = all_dataframes["RR"].str.lower().str.replace("1к", "").str.replace("1k", "").astype(float)  # Приводим колонку "RR" к числовому формату
+    all_dataframes["Mistake"] = all_dataframes["Mistake"].fillna("No data")
 
     return all_dataframes
 
@@ -165,7 +166,8 @@ def run_pipeline() -> pd.DataFrame:
         "RR": "rr",
         "Profit": "profit",
         "PNL": "pnl",
-        "Win?": "win"
+        "Win?": "win",
+        "Mistake": "mistake"
     })
     df["win"] = df["win"].replace({"Yes": True, "No": False})
     mask_for_nan = df.isna().any(axis=1)
