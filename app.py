@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from sqlalchemy import create_engine
 
-from config import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASS, DAYS_ORDER, SESSIONS_ORDER, PROFIT_PNL_SYMBS, COUNTER_TREND
+import config as cfg
 
 
 st.set_page_config(page_title="Торговый журнал", layout="wide")
@@ -15,7 +16,7 @@ def load_data():
     Загружает данные c БД
     """
     
-    db_url = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    db_url = f"postgresql://{cfg.DB_USER}:{cfg.DB_PASS}@{cfg.DB_HOST}:{cfg.DB_PORT}/{cfg.DB_NAME}"
     engine = create_engine(db_url)
 
     query = """
@@ -34,8 +35,8 @@ def load_data():
     df["month_filter"] = df["trade_date"].dt.month_name()
     df["year_filter"] = df["trade_date"].dt.year
 
-    df["trade_day"] = pd.Categorical(df["trade_day"], categories=DAYS_ORDER, ordered=True)
-    df["trade_session"] = pd.Categorical(df["trade_session"], categories=SESSIONS_ORDER, ordered=True)
+    df["trade_day"] = pd.Categorical(df["trade_day"], categories=cfg.DAYS_ORDER, ordered=True)
+    df["trade_session"] = pd.Categorical(df["trade_session"], categories=cfg.SESSIONS_ORDER, ordered=True)
 
     return df
 
@@ -188,7 +189,7 @@ def set_capital_curve(df: pd.DataFrame) -> None:
     )
     capital_curve.update_traces(
         opacity=0.5,
-        hovertemplate=f"%{{x}}<br>{equity}: %{{y:.2f}}{PROFIT_PNL_SYMBS[selected_item]}<extra></extra>"
+        hovertemplate=f"%{{x}}<br>{equity}: %{{y:.2f}}{cfg.PROFIT_PNL_SYMBS[selected_item]}<extra></extra>"
     )
     capital_curve.add_scatter(
         x=df["trade_date"],
@@ -196,7 +197,7 @@ def set_capital_curve(df: pd.DataFrame) -> None:
         mode="lines",
         name="Скользящее среднее",
         line=dict(color="white", width=2, dash="solid"),
-        hovertemplate=f"%{{x}}<br>{equity}: %{{y:.2f}}{PROFIT_PNL_SYMBS[selected_item]}<extra></extra>"
+        hovertemplate=f"%{{x}}<br>{equity}: %{{y:.2f}}{cfg.PROFIT_PNL_SYMBS[selected_item]}<extra></extra>"
     )
     st.plotly_chart(capital_curve, use_container_width=True)
 
@@ -339,7 +340,7 @@ def set_counter_trend_analytics(df: pd.DataFrame) -> None:
         None - функция вызывает "set_analytics_block" и ничего не возвращает
     """
 
-    df["counter_trend_dest"] = df["trade_position"].map(COUNTER_TREND)
+    df["counter_trend_dest"] = df["trade_position"].map(cfg.COUNTER_TREND)
 
     mask_counter_trend = df["trend_type"] == df["counter_trend_dest"]
 
@@ -458,12 +459,104 @@ def set_emotional_section(df: pd.DataFrame) -> None:
         with st.container(border=True):
             if df_with_data.empty:
                 st.warning("Нет данных")
-                
+
             st.subheader("Цена ошибки")
             grouped_df = df_with_data.groupby(["mistake"])["profit"].sum().reset_index()
 
             fig = px.bar(grouped_df, x="profit", y="mistake", orientation="h", labels={"profit": "Профит", "mistake": "Ошибка"})
             st.plotly_chart(fig, use_container_width=True, key="bar_price_mistake")
+
+@st.cache_data
+def simulation_monte_carlo(df: pd.DataFrame) -> None:
+    """
+    Создает и запускает симуляцию Монте-Карло. Проверять дневную просадку - излишне. 
+        В моей торговле максимальное количество позиций в день - 3 c риском 1% на каждую. 
+        Слить счет c дневной просадкой в 5% по моей симуляции и торговой стратегии не получится физически 
+
+    Args:
+        df: pd.DataFrame - исходный датафрейм без фильтраций
+
+    Returns:
+        None - функция устанавливает метрики и график и ничего не возвращает
+    """
+
+    np.random.seed(0)
+
+    account_size = 5000
+    trades_per_acc = 60
+    accounts_count = 1000
+
+    new_df = df[(df["account_id"] == 1) & (df["asset_type"] == "RWA")].reset_index().copy()  # На 5к RWA счете больше всего сделок, а также сделки на 10к и 25к счетах - копипаст сделок 5к счета, поэтому берем из сырого массива только 5к RWA счет
+    chosen_trades = np.random.choice(np.array(new_df.index), size=(accounts_count, trades_per_acc), replace=True)
+
+    def pass_step(chank: pd.DataFrame, target: int, profit_days: int) -> list[bool, int]:
+        mask_profit_day = chank["profit"] >= account_size * 0.005
+        
+        chank.loc[mask_profit_day, "is_profit_day"] = True
+        chank.loc[~mask_profit_day, "is_profit_day"] = False
+        chank.loc[chank["trade_date"] == chank["trade_date"].shift(1), "is_profit_day"] = False
+
+        profitable_days = chank["is_profit_day"].cumsum(axis=0)
+        cum_profit = chank["profit"].cumsum(axis=0)
+
+        mask_lose = ((cum_profit / account_size) * 100) <= cfg.TOTAL_DRAWDOWN
+        mask_pass = (((cum_profit / account_size) * 100) >= target) & (profitable_days >= profit_days)
+
+        lose_moment = mask_lose.idxmax() if mask_lose.any() else 999
+        pass_moment = mask_pass.idxmax() if mask_pass.any() else 999
+
+        return (pass_moment < lose_moment, pass_moment)
+
+    phase1_passed_count = 0
+    phase2_passed_count = 0
+    payout_count = 0
+
+    for chank in chosen_trades:
+        simulation_trades = new_df.iloc[chank].reset_index(drop=True).copy()
+        target = cfg.TARGET_1PHASE_PRC
+        profit_days = cfg.PROFITABLE_DAYS_1PHASE
+
+        phase1_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+
+        if phase1_result:
+            target = cfg.TARGET_2PHASE_PRC
+            profit_days = cfg.PROFITABLE_DAYS_2PHASE
+            phase1_passed_count += 1
+
+            simulation_trades = simulation_trades.iloc[pass_moment+1:].reset_index(drop=True)
+            phase2_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+
+            if phase2_result:
+                target = 1
+                profit_days = cfg.PROFITABLE_DAYS_FUNDED
+                phase2_passed_count += 1
+
+                simulation_trades = simulation_trades.iloc[pass_moment+1:].reset_index(drop=True)
+                funded_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+
+                if funded_result:
+                    payout_count += 1
+
+    reg_payout_prc = round((payout_count / phase2_passed_count) * 100, 2) if phase2_passed_count > 0 else 0.0
+    abs_payout_prc = round((payout_count / accounts_count) * 100, 2)
+
+    funnel_data = {
+        "step": ["Куплено счетов", "Прошли 1 фазу", "Прошли 2 фазу", "Получили выплату"],
+        "survived": [accounts_count, phase1_passed_count, phase2_passed_count, payout_count]
+    }
+    df_funnel = pd.DataFrame(funnel_data)
+
+    st.subheader("Воронка конверсий")
+
+    with st.container(border=True):
+        fig = px.funnel(df_funnel, x="survived", y="step", labels={"survived": "Выжило", "step": "Этап"})
+        fig.update_traces(textinfo="value+percent initial")
+        st.plotly_chart(fig, use_container_width=True, key="funnel_monte_carlo")
+
+    metric_cols = st.columns(2)
+
+    metric_cols[0].metric("Относительная конверсия:", f"{reg_payout_prc}%")
+    metric_cols[1].metric("Абсолютная конверсия:", f"{abs_payout_prc}%")
 
 
 def run_pipeline():
@@ -472,6 +565,7 @@ def run_pipeline():
     """
     
     df = load_data()
+    df_raw = df.copy()
     df = set_asset_choose(df=df)
     df = set_account_choose(df=df)
     df = set_sidebar(df=df)
@@ -507,6 +601,13 @@ def run_pipeline():
     st.title("Эмоции и ошибки")
 
     set_emotional_section(df=df)
+
+
+    st.divider()
+    st.divider()
+    st.title("Статистические метрики")
+
+    simulation_monte_carlo(df=df_raw)
 
 
 run_pipeline()
