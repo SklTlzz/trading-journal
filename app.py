@@ -129,10 +129,11 @@ def calculate_main_metrics(df: pd.DataFrame) -> list[float | int]:
     winrate_without_BE = (df.loc[~BE_mask, "win"].sum() / df.loc[~BE_mask, "win"].count() * 100).round(1)
     avg_rr = df["rr"].mean().round(2)
     total_trades = len(df)
+    expected_value = df["profit"].mean().round(2)
 
-    return [total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades]
+    return [total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades, expected_value]
 
-def set_header(total_profit: float, total_winrate: float, winrate_without_BE: float, avg_rr: float, total_trades: int) -> None:
+def set_header(total_profit: float, total_winrate: float, winrate_without_BE: float, avg_rr: float, total_trades: int, expected_value: float) -> None:
     """
     Устанавливает основные числовые метрики в хедер дашборда
 
@@ -147,13 +148,14 @@ def set_header(total_profit: float, total_winrate: float, winrate_without_BE: fl
         None - функция только устанавливает метрики
     """
 
-    header_cols = st.columns(5)
+    header_cols = st.columns(6)
 
     header_cols[0].metric("Общий результат", f"{total_profit}$")
     header_cols[1].metric("Общий винрейт", f"{total_winrate}%")
     header_cols[2].metric("Винрейт без БУ сделок", f"{winrate_without_BE}%")
     header_cols[3].metric("Средний РР", avg_rr)
     header_cols[4].metric("Всего сделок", total_trades)
+    header_cols[5].metric("Мат. ожидание от сделки", expected_value)
 
 def set_capital_curve(df: pd.DataFrame) -> None:
     """
@@ -466,6 +468,31 @@ def set_emotional_section(df: pd.DataFrame) -> None:
             fig = px.bar(grouped_df, x="profit", y="mistake", orientation="h", labels={"profit": "Профит", "mistake": "Ошибка"})
             st.plotly_chart(fig, use_container_width=True, key="bar_price_mistake")
 
+def monte_carlo_charts(series_worst: pd.Series, series_mid: pd.Series, series_best: pd.Series) -> None:
+    """
+    Отрисовывет графики по симуляции Монте-Карло (лучший эквити, средний и худший)
+    
+    Args:
+        series_worst: pd.DataFrame - датафрейм, состоящий из кумулятивного профита лучшего аккаунта
+        series_mid: pd.DataFrame - датафрейм, состоящий из кумулятивного профита среднего аккаунта
+        series_best: pd.DataFrame - датафрейм, состоящий из кумулятивного профита худшего аккаунта
+    
+    Returns:
+        None - функция устанавливает график и ничего не возвращает
+    """
+
+    st.subheader("Графики симуляции Монте-Карло. Считаем, что изначальный депозит - 5000")
+
+    fig = go.Figure()
+
+    steps = list(range(1, 61))
+
+    fig.add_trace(go.Scatter(x=steps, y=series_best, mode="lines", name="Лучший сценарий", line=dict(color="green")))
+    fig.add_trace(go.Scatter(x=steps, y=series_worst, mode="lines", name="Худший сценарий", line=dict(color="red")))
+    fig.add_trace(go.Scatter(x=steps, y=series_mid, mode="lines", name="Средний сценарий", line=dict(color="grey")))
+
+    st.plotly_chart(fig, use_container_width=True)
+
 @st.cache_data
 def simulation_monte_carlo(df: pd.DataFrame) -> None:
     """
@@ -510,32 +537,53 @@ def simulation_monte_carlo(df: pd.DataFrame) -> None:
     phase1_passed_count = 0
     phase2_passed_count = 0
     payout_count = 0
+    trades_1phase = []
+    trades_2phase = []
+    trades_funded = []
+    cum_profit_list = []
 
     for chank in chosen_trades:
         simulation_trades = new_df.iloc[chank].reset_index(drop=True).copy()
         target = cfg.TARGET_1PHASE_PRC
         profit_days = cfg.PROFITABLE_DAYS_1PHASE
 
-        phase1_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+        cum_profit = simulation_trades["profit"].cumsum(axis=0)
+        cum_profit_list.append(cum_profit)
+
+        phase1_result, pass_moment_1phase = pass_step(simulation_trades, target, profit_days)
 
         if phase1_result:
             target = cfg.TARGET_2PHASE_PRC
             profit_days = cfg.PROFITABLE_DAYS_2PHASE
             phase1_passed_count += 1
+            trades_1phase.append(pass_moment_1phase + 1)
 
-            simulation_trades = simulation_trades.iloc[pass_moment+1:].reset_index(drop=True)
-            phase2_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+            simulation_trades = simulation_trades.iloc[pass_moment_1phase+1:].reset_index(drop=True)
+            phase2_result, pass_moment_2phase = pass_step(simulation_trades, target, profit_days)
 
             if phase2_result:
                 target = 1
                 profit_days = cfg.PROFITABLE_DAYS_FUNDED
                 phase2_passed_count += 1
+                trades_2phase.append(pass_moment_2phase + 1)
 
-                simulation_trades = simulation_trades.iloc[pass_moment+1:].reset_index(drop=True)
-                funded_result, pass_moment = pass_step(simulation_trades, target, profit_days)
+                simulation_trades = simulation_trades.iloc[pass_moment_2phase+1:].reset_index(drop=True)
+                funded_result, pass_moment_funded = pass_step(simulation_trades, target, profit_days)
 
                 if funded_result:
                     payout_count += 1
+                    trades_funded.append(pass_moment_funded + 1)
+
+    final_cum_profits = [cum_profit.iloc[-1] for cum_profit in cum_profit_list]
+    mid_cum_profit = round(sum(final_cum_profits) / len(final_cum_profits), 2)
+
+    best_cum_profit_idx = final_cum_profits.index(max(final_cum_profits))
+    worst_cum_profit_idx = final_cum_profits.index(min(final_cum_profits))
+    mid_cum_profit_idx = min(range(len(final_cum_profits)), key=lambda i: abs(final_cum_profits[i] - mid_cum_profit))
+
+    series_best = cum_profit_list[best_cum_profit_idx] + account_size
+    series_worst = cum_profit_list[worst_cum_profit_idx] + account_size
+    series_mid = cum_profit_list[mid_cum_profit_idx] + account_size
 
     reg_payout_prc = round((payout_count / phase2_passed_count) * 100, 2) if phase2_passed_count > 0 else 0.0
     abs_payout_prc = round((payout_count / accounts_count) * 100, 2)
@@ -553,10 +601,15 @@ def simulation_monte_carlo(df: pd.DataFrame) -> None:
         fig.update_traces(textinfo="value+percent initial")
         st.plotly_chart(fig, use_container_width=True, key="funnel_monte_carlo")
 
-    metric_cols = st.columns(2)
+    metric_cols = st.columns(5)
 
     metric_cols[0].metric("Относительная конверсия:", f"{reg_payout_prc}%")
     metric_cols[1].metric("Абсолютная конверсия:", f"{abs_payout_prc}%")
+    metric_cols[2].metric("Среднее кол-во сделок для 1 фазы:", (sum(trades_1phase) // len(trades_1phase)) if trades_1phase else "Нет счетов")
+    metric_cols[3].metric("Среднее кол-во сделок для 2 фазы:", (sum(trades_2phase) // len(trades_2phase)) if trades_2phase else "Нет счетов")
+    metric_cols[4].metric("Среднее кол-во сделок до пейаута:", (sum(trades_funded) // len(trades_funded)) if trades_funded else "Нет счетов")
+
+    monte_carlo_charts(series_worst, series_mid, series_best)
 
 
 def run_pipeline():
@@ -572,8 +625,8 @@ def run_pipeline():
 
     st.title("Цифры и графики")
 
-    total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades = calculate_main_metrics(df=df)
-    set_header(total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades)
+    total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades, expected_value = calculate_main_metrics(df=df)
+    set_header(total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades, expected_value)
 
     col1, col2 = st.columns(2)
     with col1:
