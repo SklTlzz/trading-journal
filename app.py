@@ -366,7 +366,18 @@ def set_metrics_group(df: pd.DataFrame, total_trades: int) -> None:
     df_filtered = df[~BE_mask]
     min_trades = round(total_trades / 10)
 
-    def get_extremes(col_name: str, min_trades: int):
+    def get_extremes(col_name: str, min_trades: int) -> tuple[str, float, str, float]:
+        """
+        Рассчитывает экстремальные значения винрейта и профита
+
+        Args:
+            col_name: str - метрика, по которой ведется расчет
+            min_trades: int - минимальное кол-во сделок, необходимое для учета экстремума
+
+        Returns:
+            tuple[str, float, str, float] - функция возвращает экстремальные значения профита и винрейта
+        """
+
         is_enough_trades = df_filtered[col_name].value_counts() >= min_trades
         temp_df = df_filtered[df_filtered[col_name].isin(is_enough_trades[is_enough_trades == True].index)]
 
@@ -493,8 +504,22 @@ def monte_carlo_charts(series_worst: pd.Series, series_mid: pd.Series, series_be
 
     st.plotly_chart(fig, use_container_width=True)
 
+def select_trades_per_acc() -> int:
+    """
+    Устанавливает ползунок для выбора лимита сделок на аккаунт
+
+    Args:
+        None - функция ничего не принимает в качестве аргумента
+    Returns:
+        int - функция возвращает число - выбранный лимит сделок для аккаунта
+    """
+
+    trades = st.select_slider("Выберите лимит сделок на аккаунт", [i for i in range(40, 71, 5)])
+
+    return trades
+
 @st.cache_data
-def simulation_monte_carlo(df: pd.DataFrame) -> None:
+def simulation_monte_carlo(df: pd.DataFrame, trades_per_acc: int) -> None:
     """
     Создает и запускает симуляцию Монте-Карло. Проверять дневную просадку - излишне. 
         В моей торговле максимальное количество позиций в день - 3 c риском 1% на каждую. 
@@ -510,21 +535,33 @@ def simulation_monte_carlo(df: pd.DataFrame) -> None:
     np.random.seed(0)
 
     account_size = 5000
-    trades_per_acc = 60
     accounts_count = 1000
 
     new_df = df[(df["account_id"] == 1) & (df["asset_type"] == "RWA")].reset_index().copy()  # На 5к RWA счете больше всего сделок, а также сделки на 10к и 25к счетах - копипаст сделок 5к счета, поэтому берем из сырого массива только 5к RWA счет
     chosen_trades = np.random.choice(np.array(new_df.index), size=(accounts_count, trades_per_acc), replace=True)
 
-    def pass_step(chank: pd.DataFrame, target: int, profit_days: int) -> list[bool, int]:
-        mask_profit_day = chank["profit"] >= account_size * 0.005
-        
-        chank.loc[mask_profit_day, "is_profit_day"] = True
-        chank.loc[~mask_profit_day, "is_profit_day"] = False
-        chank.loc[chank["trade_date"] == chank["trade_date"].shift(1), "is_profit_day"] = False
+    def pass_step(chunk: pd.DataFrame, target: int, profit_days: int) -> tuple[bool, int]:
+        """
+        Проверяет, будет ли пройдена фаза по сделкам из chunk по заданным параметрам target и profit_days 
 
-        profitable_days = chank["is_profit_day"].cumsum(axis=0)
-        cum_profit = chank["profit"].cumsum(axis=0)
+        Args:
+            chunk: pd.DataFrame - датафрейм сгенерированных сделок
+            target: int - цель общего профита
+            profit_days: int - цель для общих прибыльных дней
+    
+        Returns:
+            tuple[bool, int] - функция возвращает список, где лежит bool-значение (аккаунт прошел/не прошел фазу) 
+                и номер сделки из chunk, на которой он прошел фазу
+        """
+
+        mask_profit_day = chunk["profit"] >= account_size * 0.005
+        
+        chunk.loc[mask_profit_day, "is_profit_day"] = True
+        chunk.loc[~mask_profit_day, "is_profit_day"] = False
+        chunk.loc[chunk["trade_date"] == chunk["trade_date"].shift(1), "is_profit_day"] = False
+
+        profitable_days = chunk["is_profit_day"].cumsum(axis=0)
+        cum_profit = chunk["profit"].cumsum(axis=0)
 
         mask_lose = ((cum_profit / account_size) * 100) <= cfg.TOTAL_DRAWDOWN
         mask_pass = (((cum_profit / account_size) * 100) >= target) & (profitable_days >= profit_days)
@@ -542,8 +579,8 @@ def simulation_monte_carlo(df: pd.DataFrame) -> None:
     trades_funded = []
     cum_profit_list = []
 
-    for chank in chosen_trades:
-        simulation_trades = new_df.iloc[chank].reset_index(drop=True).copy()
+    for chunk in chosen_trades:
+        simulation_trades = new_df.iloc[chunk].reset_index(drop=True).copy()
         target = cfg.TARGET_1PHASE_PRC
         profit_days = cfg.PROFITABLE_DAYS_1PHASE
 
@@ -611,6 +648,26 @@ def simulation_monte_carlo(df: pd.DataFrame) -> None:
 
     monte_carlo_charts(series_worst, series_mid, series_best)
 
+def kelly_criterion(winrate: float, avg_rr: float) -> None:
+    """
+    Рассчитывает и выводит в дашборд критерий Келли
+
+    Args:
+        winrate: float - общий винрейт в долях от 0 до 1 (с учетом БУ сделок)
+        avg_rr: float - средний РР (risk/reward)
+
+    Returns:
+        None - функция выводит метрику и ничего не возвращает
+    """
+
+    criterion = round((avg_rr*winrate - (1 - winrate)) / avg_rr * 100, 2) if avg_rr != 0 else 0.0
+
+    if criterion > 0:
+        col = st.columns(1)
+        col[0].metric("Оптимальный размер позиции от капитала на 1 сделку для максимизации профита (если убрать ограничения от пропа):", f"{criterion}%")
+    else:
+        st.warning("Стратегия убыточна")
+
 
 def run_pipeline():
     """
@@ -660,7 +717,10 @@ def run_pipeline():
     st.divider()
     st.title("Статистические метрики")
 
-    simulation_monte_carlo(df=df_raw)
+    trades_per_acc = select_trades_per_acc()
+    simulation_monte_carlo(df=df_raw, trades_per_acc=trades_per_acc)
+
+    kelly_criterion(total_winrate/100, avg_rr)
 
 
 run_pipeline()
