@@ -12,10 +12,10 @@ An interactive dashboard for in-depth trading statistics analysis and risk manag
 - **PostgreSQL + SQLAlchemy** - Data storage and DB connection
 
 ## Interface
-<img width="1919" height="905" alt="image" src="https://github.com/user-attachments/assets/6d04d198-5a0a-4b1d-9c88-0b9197c96c97" />
-<img width="1919" height="900" alt="image" src="https://github.com/user-attachments/assets/7970565a-a11f-4e56-9a48-8370c8c3c9ff" />
-<img width="1919" height="908" alt="image" src="https://github.com/user-attachments/assets/eae902d4-72c3-4df3-b1f6-8d50bfb3a727" />
-<img width="1919" height="903" alt="image" src="https://github.com/user-attachments/assets/68cd0ed1-3916-486c-b3b1-d467a2133891" />
+<img width="1919" height="899" alt="image" src="https://github.com/user-attachments/assets/fd308125-34a7-4faa-86b9-3dfe56ad4a47" />
+<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/0823dedc-f4f3-4df8-8223-e4bb20c1160a" />
+<img width="1919" height="908" alt="image" src="https://github.com/user-attachments/assets/b76e4309-f97a-44df-872b-6cccd9b55ce5" />
+<img width="1919" height="905" alt="image" src="https://github.com/user-attachments/assets/16dea7f5-b054-41c5-8f4f-1aacf7371957" />
 
 ## Key Features
 - **Full ETL Pipeline** — Scripts clean the raw data, recover missing values where possible, and load everything into a relational PostgreSQL database.
