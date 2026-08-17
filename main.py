@@ -5,7 +5,7 @@ from config import DB_USER, DB_HOST, DB_PORT, DB_NAME, DB_PASS
 
 def main():
     """
-    Заполняет БД очищенными данными
+    Populates the DB with cleaned data
     """
 
     clean_df = run_pipeline()
@@ -29,3 +29,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

@@ -1,27 +1,27 @@
-## Торговый Журнал
+## Trading Journal
 
-## [Открыть дашборд в сети](https://andrey-trading-journal.streamlit.app/)
+## [Open Live Dashboard](https://andrey-trading-journal.streamlit.app/)
 
-Интерактивный дашборд для глубокого анализа торговой статистики и управления рисками. Проект разработан для автоматизации трекинга сделок, выявления прибыльных/убыточных закономерностей и просмотра глобальной статистики.
+An interactive dashboard for in-depth trading statistics analysis and risk management. The project was built to automate trade tracking, identify profitable/unprofitable patterns, and visualize overall performance.
 
-## Стек
-- **Python** - основная логика
-- **Pandas** - ETL-процессы, расчеты
-- **Plotly** - построение интерактивных графиков
-- **Streamlit** - веб-интерфейс
-- **PostgreSQL + SQLAlchemy** - хранение данных и коннект к БД
+## Tech Stack
+- **Python** - Core logic
+- **Pandas** - ETL processes, calculations
+- **Plotly** - Interactive data visualization
+- **Streamlit** - Web interface
+- **PostgreSQL + SQLAlchemy** - Data storage and DB connection
 
-## Интерфейс
+## Interface
 <img width="1919" height="905" alt="image" src="https://github.com/user-attachments/assets/6d04d198-5a0a-4b1d-9c88-0b9197c96c97" />
 <img width="1919" height="900" alt="image" src="https://github.com/user-attachments/assets/7970565a-a11f-4e56-9a48-8370c8c3c9ff" />
 <img width="1919" height="908" alt="image" src="https://github.com/user-attachments/assets/eae902d4-72c3-4df3-b1f6-8d50bfb3a727" />
 <img width="1919" height="903" alt="image" src="https://github.com/user-attachments/assets/68cd0ed1-3916-486c-b3b1-d467a2133891" />
 
-## Ключевой функционал
-- **Полноценный ETL-пайплайн** — скрипты очищают данные, по возможности восстанавливают недостающие значения и загружают в реляционную базу данных PostgreSQL
-- **Динамическая фильтрация** — фильтры по классу активов (Crypto/RWA), размеру депозита, годам и месяцам
-- **Анализ эквити** — построение кривой капитала с расчетом динамической скользящей средней для оценки тренда доходности
-- **Сегментация статистики** — детализированный срез результативности по 7-ми параметрам: дням недели, торговым сессиям, паттернам, сетапам, направлению позиции (Long/Short), парам и торговле в контртренд
-- **Экстремумы эффективности** — алгоритм выявляет лучшие и худшие результаты по заданным метрикам с динамической защитой от выбросов (учет минимального количества сделок)
-- **Эмоциональный анализ** — подсчет торговых ошибок, их распределение по торговым сессиям и расчет суммарной цены ошибки
-- **Продвинутая статистика и риски** — встроена симуляция Монте-Карло для расчета вероятности прохождения челленджей, воронка конверсий по счетам, расчет оптимальной ставки по критерию Келли и тепловая карта профита
+## Key Features
+- **Full ETL Pipeline** — Scripts clean the raw data, recover missing values where possible, and load everything into a relational PostgreSQL database.
+- **Dynamic Filtering** — Filters by asset class (Crypto/RWA), deposit size, years, and months.
+- **Equity Analysis** — Plots an equity curve along with a dynamically calculated moving average to assess profitability trends.
+- **Statistics Segmentation** — Detailed performance breakdowns across 7 parameters: day of the week, trading session, pattern, setup, position direction (Long/Short), pairs, and counter-trend trades.
+- **Performance Extremes** — An algorithm that extracts the best and worst results based on specific metrics, including dynamic outlier protection (requires a minimum number of trades).
+- **Emotional Analysis** — Tracks trading mistakes, maps their distribution across trading sessions, and calculates the total cost of mistakes.
+- **Advanced Stats & Risk Management** — Built-in Monte Carlo simulation to estimate the probability of passing prop firm challenges, a conversion funnel for accounts, optimal position sizing using the Kelly Criterion, and a heatmap tracking profit by time and day.

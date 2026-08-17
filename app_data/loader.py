@@ -8,7 +8,7 @@ import config as cfg
 @st.cache_data
 def load_data():
     """
-    Загружает данные c БД
+    Loads data from the database
     """
     
     db_url = f"postgresql://{cfg.DB_USER}:{cfg.DB_PASS}@{cfg.DB_HOST}:{cfg.DB_PORT}/{cfg.DB_NAME}"

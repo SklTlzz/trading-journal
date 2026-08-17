@@ -8,11 +8,11 @@ from app_sections.emotions import set_emotional_section
 from app_sections.statistics import select_trades_per_acc, simulation_monte_carlo, kelly_criterion, day_time_heatmap
 
 
-st.set_page_config(page_title="Торговый журнал", layout="wide")
+st.set_page_config(page_title="Trading Journal", layout="wide")
 
 def run_pipeline():
     """
-    Запускает и собирает воедино все объявленные ранее функции
+    Runs and integrates all previously declared functions
     """
     
     df = load_data()
@@ -21,7 +21,7 @@ def run_pipeline():
     df = set_account_choose(df=df)
     df = set_sidebar(df=df)
 
-    st.title("Цифры и графики")
+    st.title("Metrics and Charts")
 
     total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades, expected_value = calculate_main_metrics(df=df)
     set_header(total_profit, total_winrate, winrate_without_BE, avg_rr, total_trades, expected_value)
@@ -33,14 +33,14 @@ def run_pipeline():
         set_months_chart(df=df)
 
     if df.empty:
-        st.warning("Нет сделок по выбранным фильтрам")
+        st.warning("No trades found for the selected filters")
         st.stop()
 
     st.divider()
 
-    set_analytics_group(df, ["trade_day", "trade_session"], ["Статистика по дням недели", "Статистика по сессиям"])
-    set_analytics_group(df, ["pattern", "setup"], ["Статистика по паттернам", "Статистика по сетапам"])
-    set_analytics_group(df, ["trade_position", "pair"], ["Статистика по позициям", "Статистика по парам"])
+    set_analytics_group(df, ["trade_day", "trade_session"], ["Stats by Day of Week", "Stats by Session"])
+    set_analytics_group(df, ["pattern", "setup"], ["Stats by Pattern", "Stats by Setup"])
+    set_analytics_group(df, ["trade_position", "pair"], ["Stats by Position", "Stats by Pair"])
 
     set_counter_trend_analytics(df=df)
 
@@ -49,14 +49,14 @@ def run_pipeline():
 
     st.divider()
     st.divider()
-    st.title("Эмоции и ошибки")
+    st.title("Emotions and Mistakes")
 
     set_emotional_section(df=df)
 
 
     st.divider()
     st.divider()
-    st.title("Статистические метрики")
+    st.title("Statistical Metrics")
 
     trades_per_acc = select_trades_per_acc()
     simulation_monte_carlo(df=df_raw, trades_per_acc=trades_per_acc)

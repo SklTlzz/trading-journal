@@ -8,14 +8,14 @@ import config as cfg
 
 def calculate_main_metrics(df: pd.DataFrame) -> list[float | int]:
     """
-    Рассчитывает основные числовые метрики, находящиеся в хедере дашборда
-    Буду считать, что безубыток - это сделка, где -0.07 <= PNL <= 0.07
+    Calculates the main numerical metrics located in the dashboard header.
+    Assuming breakeven is a trade where -0.07 <= PNL <= 0.07
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
 
     Returns:
-        list[float | int] - список из 5-ти основных метрик
+        list[float | int] - list of 5 main metrics
     """
 
     BE_mask = (df["pnl"] <= 0.07) & (df["pnl"] >= -0.07)
@@ -31,45 +31,45 @@ def calculate_main_metrics(df: pd.DataFrame) -> list[float | int]:
 
 def set_header(total_profit: float, total_winrate: float, winrate_without_BE: float, avg_rr: float, total_trades: int, expected_value: float) -> None:
     """
-    Устанавливает основные числовые метрики в хедер дашборда
+    Sets up the main numerical metrics in the dashboard header
 
     Args:
-        total_profit: float - итоговый профит
-        total_winrate: float - общий винрейт
-        winrate_without_BE: float - винрейт без учета безубыточных сделок
-        avg_rr: float - средний риск/ревард (рр)
-        total_trades: int - всего сделок
+        total_profit: float - total profit
+        total_winrate: float - overall winrate
+        winrate_without_BE: float - winrate excluding breakeven trades
+        avg_rr: float - average risk/reward (RR)
+        total_trades: int - total number of trades
     
     Returns:
-        None - функция только устанавливает метрики
+        None - the function only sets up the metrics
     """
 
     header_cols = st.columns(6)
 
-    header_cols[0].metric("Общий результат", f"{total_profit}$")
-    header_cols[1].metric("Общий винрейт", f"{total_winrate}%")
-    header_cols[2].metric("Винрейт без БУ сделок", f"{winrate_without_BE}%")
-    header_cols[3].metric("Средний РР", avg_rr)
-    header_cols[4].metric("Всего сделок", total_trades)
-    header_cols[5].metric("Мат. ожидание от сделки", expected_value)
+    header_cols[0].metric("Total Profit", f"{total_profit}$")
+    header_cols[1].metric("Total Winrate", f"{total_winrate}%")
+    header_cols[2].metric("Winrate w/o BE", f"{winrate_without_BE}%")
+    header_cols[3].metric("Average RR", avg_rr)
+    header_cols[4].metric("Total Trades", total_trades)
+    header_cols[5].metric("Expected Value", expected_value)
 
 def set_capital_curve(df: pd.DataFrame) -> None:
     """
-    Устанавливает график кривой капитала
+    Sets up the equity curve chart
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
 
     Returns:
-        None - функция только устанавливает график
+        None - the function only sets up the chart
     """
 
-    selected_item = st.selectbox("Выберите отображение", ["Profit", "PNL"])
+    selected_item = st.selectbox("Select view", ["Profit", "PNL"])
     equity = selected_item
     
-    smoothing = len(df) // 10  # Динамичное сглаживание для скользящей средней
+    smoothing = len(df) // 10  # Dynamic smoothing for the moving average
 
-    # Чтобы график был читаем, считаем эквити только если выбран определенный счет, иначе - считаем только профит
+    # To keep the chart readable, we calculate equity only if a specific account is selected, otherwise we only calculate profit
     if selected_item != "PNL" and len(df["account_id"].unique()) == 1:
         equity = "Equity"
         df["equity"] = df["account_size"] + df[selected_item.lower()].cumsum()
@@ -82,8 +82,8 @@ def set_capital_curve(df: pd.DataFrame) -> None:
         data_frame=df, 
         x="trade_date", 
         y="equity", 
-        labels={"trade_date": "Дата", "equity": equity}, 
-        title="Кривая капитала"
+        labels={"trade_date": "Date", "equity": equity}, 
+        title="Equity Curve"
     )
     capital_curve.update_traces(
         opacity=0.5,
@@ -93,7 +93,7 @@ def set_capital_curve(df: pd.DataFrame) -> None:
         x=df["trade_date"],
         y=df["ma"],
         mode="lines",
-        name="Скользящее среднее",
+        name="Moving Average",
         line=dict(color="white", width=2, dash="solid"),
         hovertemplate=f"%{{x}}<br>{equity}: %{{y:.2f}}{cfg.PROFIT_PNL_SYMBS[selected_item]}<extra></extra>"
     )
@@ -101,13 +101,13 @@ def set_capital_curve(df: pd.DataFrame) -> None:
 
 def set_months_chart(df: pd.DataFrame) -> None:
     """
-    Устанавливает столбчатый график профита по месяцам
+    Sets up the bar chart for profit by months
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
 
     Returns:
-        None - функция только устанавливает график
+        None - the function only sets up the chart
     """
 
     df["months"] = df["trade_date"].dt.strftime("%Y-%m")
@@ -115,36 +115,36 @@ def set_months_chart(df: pd.DataFrame) -> None:
 
     fig = px.bar(grouping_by_months, x="months", y="profit")
     fig.update_traces(
-        hovertemplate="%{x}<br>Профит: %{y:.2f}$<extra></extra>"
+        hovertemplate="%{x}<br>Profit: %{y:.2f}$<extra></extra>"
     )
     st.plotly_chart(fig, use_container_width=True)
 
 def create_profit_bar(df: pd.DataFrame, group_col: str) -> go.Figure:
     """
-    Создает горизонтальный столбчатый график для отображения профита
+    Creates a horizontal bar chart to display profit
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
-        group_col: str - колонка, по которой нужно группировать
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
+        group_col: str - column to group by
 
     Returns:
-        go.Figure - функция возвращает объект фигуры
+        go.Figure - the function returns a figure object
     """
 
     grouped_df = df.groupby([group_col])["profit"].sum().reset_index()
-    fig = px.bar(grouped_df, x="profit", y=group_col, orientation="h", labels={"profit": "Профит"})
+    fig = px.bar(grouped_df, x="profit", y=group_col, orientation="h", labels={"profit": "Profit"})
 
     return fig
 
 def create_winrate_pie(df: pd.DataFrame) -> go.Figure:
     """
-    Создает круговую диаграмму винрейта
+    Creates a pie chart for winrate
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
 
     Returns:
-        go.Figure - функция возвращает объект фигуры
+        go.Figure - the function returns a figure object
     """
     BE_mask = (df["pnl"] <= 0.07) & (df["pnl"] >= -0.07)
     win_mask = df["win"] == True
@@ -166,22 +166,22 @@ def create_winrate_pie(df: pd.DataFrame) -> go.Figure:
             "Lose": "#EF553B",
             "BE": "#b1b1b1",
         },
-        labels={"count": "Количество", "trade_result": "Результат"}
+        labels={"count": "Count", "trade_result": "Result"}
     )
 
     return fig
 
 def set_analytics_block(df: pd.DataFrame, group_col: str, title: str) -> None:
     """
-    Устанавливает блок, состоящий из 2-ух графиков - профит и винрейт
+    Sets up a block consisting of 2 charts - profit and winrate
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
-        group_col: str - колонка, по которой нужно группировать (для столбчатого графика)
-        title: str - название блока графиков
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
+        group_col: str - column to group by (for the bar chart)
+        title: str - title of the chart block
         
     Returns:
-        None - функция рисует графики и ничего не возвращает
+        None - the function draws charts and returns nothing
     """
 
     with st.container(border=True):
@@ -195,29 +195,29 @@ def set_analytics_block(df: pd.DataFrame, group_col: str, title: str) -> None:
             unique_items = df[group_col].dropna().unique()
             
             if len(unique_items) == 0:
-                st.warning("Нет данных для винрейта")
+                st.warning("No data for winrate")
                 return
 
-            selected_item = st.selectbox("Выберите критерий для винрейта", df[group_col].unique(), key=f"select_{group_col}")
+            selected_item = st.selectbox("Select criterion for winrate", df[group_col].unique(), key=f"select_{group_col}")
             df_pie = df[df[group_col] == selected_item].copy()
 
             if df_pie.empty:
-                st.warning("Нет данных для отображения")
+                st.warning("No data to display")
             else:
                 fig_pie = create_winrate_pie(df=df_pie)
                 st.plotly_chart(fig_pie, use_container_width=True, key=f"pie_{group_col}")
 
 def set_analytics_group(df: pd.DataFrame, group_cols: list[str], titles: list[str]) -> None:
     """
-    Устанавливает группу, состоящую из 2-ух блоков из "set_analytics_block"
+    Sets up a group consisting of 2 blocks from "set_analytics_block"
 
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
-        group_cols: list[str] - список колонок, по которым нужно группировать 1 и 2 блоки соответственно (для столбчатого графика)
-        titles: list[str] - список названий 1 и 2 блоков соответственно
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
+        group_cols: list[str] - list of columns to group the 1st and 2nd blocks by respectively (for the bar chart)
+        titles: list[str] - list of titles for the 1st and 2nd blocks respectively
         
     Returns:
-        None - функция создает блоки для "set_analytics_block" и ничего не возвращает 
+        None - the function creates blocks for "set_analytics_block" and returns nothing 
     """
 
     col1, col2 = st.columns(2)
@@ -229,13 +229,13 @@ def set_analytics_group(df: pd.DataFrame, group_cols: list[str], titles: list[st
 
 def set_counter_trend_analytics(df: pd.DataFrame) -> None:
     """
-    Добавляет новую колонку в df для анализа контртренд сделок
+    Adds a new column to df for analyzing counter-trend trades
     
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
         
     Returns:
-        None - функция вызывает "set_analytics_block" и ничего не возвращает
+        None - the function calls "set_analytics_block" and returns nothing
     """
 
     df["counter_trend_dest"] = df["trade_position"].map(cfg.COUNTER_TREND)
@@ -245,17 +245,17 @@ def set_counter_trend_analytics(df: pd.DataFrame) -> None:
     df.loc[mask_counter_trend, "is_counter_trend"] = True
     df.loc[~mask_counter_trend, "is_counter_trend"] = False
 
-    set_analytics_block(df, "is_counter_trend", "Статистика по контртренду")
+    set_analytics_block(df, "is_counter_trend", "Counter-trend Stats")
 
 def set_metrics_group(df: pd.DataFrame, total_trades: int) -> None:
     """
-    Устанавливает числовые экстремальные метрики (лучшие/худшие)
+    Sets up extreme numerical metrics (best/worst)
     
     Args:
-        df: pd.DataFrame - датафрейм, отфильтрованный по классу актива, месяцу, году и аккаунту
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
         
     Returns:
-        None - функция устанавливает метрики и ничего не возвращает
+        None - the function sets up metrics and returns nothing
     """
 
     BE_mask = (df["pnl"] <= 0.07) & (df["pnl"] >= -0.07)
@@ -264,21 +264,21 @@ def set_metrics_group(df: pd.DataFrame, total_trades: int) -> None:
 
     def get_extremes(col_name: str, min_trades: int) -> tuple[str, float, str, float]:
         """
-        Рассчитывает экстремальные значения винрейта и профита
+        Calculates extreme values for winrate and profit
 
         Args:
-            col_name: str - метрика, по которой ведется расчет
-            min_trades: int - минимальное кол-во сделок, необходимое для учета экстремума
+            col_name: str - the metric being calculated
+            min_trades: int - minimum number of trades required to consider the extreme
 
         Returns:
-            tuple[str, float, str, float] - функция возвращает экстремальные значения профита и винрейта
+            tuple[str, float, str, float] - the function returns extreme values of profit and winrate
         """
 
         is_enough_trades = df_filtered[col_name].value_counts() >= min_trades
         temp_df = df_filtered[df_filtered[col_name].isin(is_enough_trades[is_enough_trades == True].index)]
 
         if temp_df[col_name].empty:
-            return "Недостаточно данных", 0.0, "Недостаточно данных", 0.0
+            return "Not enough data", 0.0, "Not enough data", 0.0
         else:
             winrates = (temp_df.groupby(by=[col_name])["win"].sum() / temp_df.groupby(by=[col_name])["win"].count() * 100).round(1).reset_index()
             profits = temp_df.groupby(by=[col_name])["profit"].sum().round(2).reset_index()
@@ -294,24 +294,24 @@ def set_metrics_group(df: pd.DataFrame, total_trades: int) -> None:
     best_position, best_position_value, worst_position, worst_position_value = get_extremes("trade_position", min_trades=min_trades)
     best_pair, best_pair_value, worst_pair, worst_pair_value = get_extremes("pair", min_trades=min_trades)
 
-    st.subheader("Лучшие показатели")
+    st.subheader("Best Performers")
     cols_best = st.columns(6)
     
-    cols_best[0].metric("День:", best_day, delta=f"+ WR: {best_day_value}%")
-    cols_best[1].metric("Сессия:", best_session, delta=f"+ WR: {best_session_value}%")
-    cols_best[2].metric("Паттерн:", best_pattern, delta=f"+ WR: {best_pattern_value}%")
-    cols_best[3].metric("Сетап:", best_setup, delta=f"+ WR: {best_setup_value}%")
-    cols_best[4].metric("Позиция:", best_position, delta=f"+ WR: {best_position_value}%")
-    cols_best[5].metric("Пара:", best_pair, delta=f"+ WR: {best_pair_value}%")
+    cols_best[0].metric("Day:", best_day, delta=f"+ WR: {best_day_value}%")
+    cols_best[1].metric("Session:", best_session, delta=f"+ WR: {best_session_value}%")
+    cols_best[2].metric("Pattern:", best_pattern, delta=f"+ WR: {best_pattern_value}%")
+    cols_best[3].metric("Setup:", best_setup, delta=f"+ WR: {best_setup_value}%")
+    cols_best[4].metric("Position:", best_position, delta=f"+ WR: {best_position_value}%")
+    cols_best[5].metric("Pair:", best_pair, delta=f"+ WR: {best_pair_value}%")
 
     st.divider()
 
-    st.subheader("Худшие показатели")
+    st.subheader("Worst Performers")
     cols_worst = st.columns(6)
     
-    cols_worst[0].metric("День:", worst_day, delta=f"- WR: {worst_day_value}%")
-    cols_worst[1].metric("Сессия:", worst_session, delta=f"- WR: {worst_session_value}%")
-    cols_worst[2].metric("Паттерн:", worst_pattern, delta=f"- WR: {worst_pattern_value}%")
-    cols_worst[3].metric("Сетап:", worst_setup, delta=f"- WR: {worst_setup_value}%")
-    cols_worst[4].metric("Позиция:", worst_position, delta=f"- WR: {worst_position_value}%")
-    cols_worst[5].metric("Пара:", worst_pair, delta=f"- WR: {worst_pair_value}%")
+    cols_worst[0].metric("Day:", worst_day, delta=f"- WR: {worst_day_value}%")
+    cols_worst[1].metric("Session:", worst_session, delta=f"- WR: {worst_session_value}%")
+    cols_worst[2].metric("Pattern:", worst_pattern, delta=f"- WR: {worst_pattern_value}%")
+    cols_worst[3].metric("Setup:", worst_setup, delta=f"- WR: {worst_setup_value}%")
+    cols_worst[4].metric("Position:", worst_position, delta=f"- WR: {worst_position_value}%")
+    cols_worst[5].metric("Pair:", worst_pair, delta=f"- WR: {worst_pair_value}%")
