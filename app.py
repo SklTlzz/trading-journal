@@ -5,7 +5,7 @@ from app_data.filters import set_asset_choose, set_sidebar, set_account_choose
 from app_sections.main_board import calculate_main_metrics, set_header, set_capital_curve, set_months_chart, \
                                 set_analytics_group, set_counter_trend_analytics, set_metrics_group 
 from app_sections.emotions import set_emotional_section
-from app_sections.statistics import select_trades_per_acc, simulation_monte_carlo, kelly_criterion, day_time_heatmap
+from app_sections.statistics import select_trades_per_acc, simulation_monte_carlo, kelly_criterion, day_time_heatmap, pair_session_heatmap
 
 
 st.set_page_config(page_title="Trading Journal", layout="wide")
@@ -64,6 +64,8 @@ def run_pipeline():
     kelly_criterion(total_winrate/100, avg_rr)
 
     day_time_heatmap(df=df)
+
+    pair_session_heatmap(df=df)
 
 
 run_pipeline()

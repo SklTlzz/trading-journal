@@ -224,3 +224,33 @@ def day_time_heatmap(df: pd.DataFrame) -> None:
     )
     fig.update_traces(xgap=3, ygap=3)
     st.plotly_chart(fig, use_container_width=True)
+
+def pair_session_heatmap(df: pd.DataFrame) -> None:
+    """
+    Draws a heatmap showing profit dependence on time (session) and pair
+
+    Args:
+        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
+        
+    Returns:
+        None - the function draws the chart and returns nothing
+    """
+
+    grouped_df = df.groupby(["pair", "trade_session"])["profit"].sum().reset_index()
+
+    st.divider()
+    st.subheader("Heatmap: Profit dependence on Session and Pair")
+
+    fig = px.density_heatmap(
+        grouped_df,
+        x="pair",
+        y="trade_session",
+        z="profit",
+        text_auto=".0f",
+        labels={"pair": "Pair", "trade_session": "Session"},
+        color_continuous_scale=["#EF553B", "#1E1E1E", "#00CC96"],
+        color_continuous_midpoint=0,
+    )
+    fig.update_traces(xgap=3, ygap=3)
+    st.plotly_chart(fig, use_container_width=True)
+    
