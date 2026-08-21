@@ -197,52 +197,52 @@ def kelly_criterion(winrate: float, avg_rr: float) -> None:
     else:
         st.warning("Strategy is unprofitable")
 
-def select_heatmap_args() -> tuple[str, str]:
+def select_heatmap_args() -> tuple[str, str, str, str]:
     """
     Sets up a selectbox for selecting heatmap args
 
     Returns:
-        tuple[str, str] - tuple of X-axis and Y-axis args for heatmap
+        tuple[str, str, str, str] - tuple of X-axis and Y-axis args for heatmap and their labels
     """
 
     st.divider()
 
-    heatmap_features = [
-        "trade_day", 
-        "trade_session", 
-        "pair", 
-        "trade_position",
-        "is_counter_trend",
-        "setup",
-        "pattern",
-        "asset_type",
-        "trend_type",
-        "risk",
-        "rr",
-        "win",
-        "mistake",
-    ]
+    heatmap_features = {
+        "Trade day": "trade_day", 
+        "Trade session": "trade_session", 
+        "Pair": "pair", 
+        "Trade position": "trade_position",
+        "Is counter trend?": "is_counter_trend",
+        "Setup": "setup",
+        "Pattern": "pattern",
+        "Asset type": "asset_type",
+        "Trend type": "trend_type",
+        "Risk": "risk",
+        "RR": "rr",
+        "Win?": "win",
+        "Mistake": "mistake",
+    }
 
     col1, col2 = st.columns(2)
     
     with col1:
-        x_axis = st.selectbox("Select X-axis:", options=heatmap_features, index=0)
+        x_axis = st.selectbox("Select X-axis:", options=heatmap_features.keys(), index=0)
     with col2:
-        y_axis = st.selectbox("Select Y-axis:", options=heatmap_features, index=1)
+        y_axis = st.selectbox("Select Y-axis:", options=heatmap_features.keys(), index=1)
 
     st.markdown("""
         **Most useful combinations:**
-        * `trade_day` + `trade_session`
-        * `pair` + `trade_session`
-        * `trade_position` + `is_counter_trend`
-        * `trade_session` + `mistake`
-        * `is_counter_trend` + `mistake`
+        * `Trade day` + `Trade session`
+        * `Pair` + `Trade session`
+        * `Trade position` + `Is counter trend?`
+        * `Trade session` + `Mistake`
+        * `Is counter trend?` + `Mistake`
     """)
 
-    return x_axis, y_axis
+    return heatmap_features[x_axis], heatmap_features[y_axis], x_axis, y_axis
 
 @st.cache_data
-def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str) -> None:
+def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str, labels: list[str]) -> None:
     """
     Draws a heatmap showing profit dependence on received arguments
     
@@ -250,6 +250,7 @@ def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str) -> None:
         df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
         x_axis: str - the column on X-axis on heatmap
         y_axis: str - the column on Y-axis on heatmap
+        labels: list[str] - X-axis and Y-axis columns labels
     
     Returns:
         None - the function draws the chart and returns nothing
@@ -259,8 +260,8 @@ def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str) -> None:
         st.warning("Please select different columns for X and Y")
         return
 
-    st.subheader(f"Heatmap: Profit dependence on {x_axis} and {y_axis}")
-
+    st.subheader(f"Heatmap: Profit dependence on {labels[0]} and {labels[1]}")
+    
     if x_axis == "mistake" or y_axis == "mistake":
         df = df[df["mistake"] != "No data"].copy()
 
@@ -272,6 +273,7 @@ def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str) -> None:
         y=y_axis,
         z="profit",
         text_auto=".0f",
+        labels={x_axis: labels[0], y_axis: labels[1]},
         color_continuous_scale=["#EF553B", "#1E1E1E", "#00CC96"],
         color_continuous_midpoint=0,
     )

@@ -63,7 +63,7 @@ def run_pipeline():
 
     kelly_criterion(total_winrate/100, avg_rr)
 
-    x_axis, y_axis = select_heatmap_args()
-    draw_heatmap(df, x_axis, y_axis)
+    x_axis, y_axis, *labels = select_heatmap_args()
+    draw_heatmap(df, x_axis, y_axis, labels)
 
 run_pipeline()
