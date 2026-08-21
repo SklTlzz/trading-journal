@@ -197,60 +197,83 @@ def kelly_criterion(winrate: float, avg_rr: float) -> None:
     else:
         st.warning("Strategy is unprofitable")
 
-def day_time_heatmap(df: pd.DataFrame) -> None:
+def select_heatmap_args() -> tuple[str, str]:
     """
-    Draws a heatmap showing profit dependence on time (session) and day of the week
+    Sets up a selectbox for selecting heatmap args
+
+    Returns:
+        tuple[str, str] - tuple of X-axis and Y-axis args for heatmap
+    """
+
+    st.divider()
+
+    heatmap_features = [
+        "trade_day", 
+        "trade_session", 
+        "pair", 
+        "trade_position",
+        "is_counter_trend",
+        "setup",
+        "pattern",
+        "asset_type",
+        "trend_type",
+        "risk",
+        "rr",
+        "win",
+        "mistake",
+    ]
+
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        x_axis = st.selectbox("Select X-axis:", options=heatmap_features, index=0)
+    with col2:
+        y_axis = st.selectbox("Select Y-axis:", options=heatmap_features, index=1)
+
+    st.markdown("""
+        **Most useful combinations:**
+        * `trade_day` + `trade_session`
+        * `pair` + `trade_session`
+        * `trade_position` + `is_counter_trend`
+        * `trade_session` + `mistake`
+        * `is_counter_trend` + `mistake`
+    """)
+
+    return x_axis, y_axis
+
+@st.cache_data
+def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str) -> None:
+    """
+    Draws a heatmap showing profit dependence on received arguments
     
     Args:
         df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
+        x_axis: str - the column on X-axis on heatmap
+        y_axis: str - the column on Y-axis on heatmap
     
     Returns:
         None - the function draws the chart and returns nothing
     """
 
-    grouped_df = df.groupby(["trade_day", "trade_session"])["profit"].sum().reset_index()
-    st.divider()
-    st.subheader("Heatmap: Profit dependence on Session and Day of the week")
+    if x_axis == y_axis:
+        st.warning("Please select different columns for X and Y")
+        return
+
+    st.subheader(f"Heatmap: Profit dependence on {x_axis} and {y_axis}")
+
+    if x_axis == "mistake" or y_axis == "mistake":
+        df = df[df["mistake"] != "No data"].copy()
+
+    grouped_df = df.groupby([x_axis, y_axis])["profit"].sum().reset_index()
 
     fig = px.density_heatmap(
         grouped_df, 
-        x="trade_day",
-        y="trade_session",
+        x=x_axis,
+        y=y_axis,
         z="profit",
         text_auto=".0f",
-        labels={"trade_day": "Day", "trade_session": "Session"},
         color_continuous_scale=["#EF553B", "#1E1E1E", "#00CC96"],
         color_continuous_midpoint=0,
     )
     fig.update_traces(xgap=3, ygap=3)
     st.plotly_chart(fig, use_container_width=True)
-
-def pair_session_heatmap(df: pd.DataFrame) -> None:
-    """
-    Draws a heatmap showing profit dependence on time (session) and pair
-
-    Args:
-        df: pd.DataFrame - dataframe filtered by asset class, month, year, and account
-        
-    Returns:
-        None - the function draws the chart and returns nothing
-    """
-
-    grouped_df = df.groupby(["pair", "trade_session"])["profit"].sum().reset_index()
-
-    st.divider()
-    st.subheader("Heatmap: Profit dependence on Session and Pair")
-
-    fig = px.density_heatmap(
-        grouped_df,
-        x="pair",
-        y="trade_session",
-        z="profit",
-        text_auto=".0f",
-        labels={"pair": "Pair", "trade_session": "Session"},
-        color_continuous_scale=["#EF553B", "#1E1E1E", "#00CC96"],
-        color_continuous_midpoint=0,
-    )
-    fig.update_traces(xgap=3, ygap=3)
-    st.plotly_chart(fig, use_container_width=True)
-    
