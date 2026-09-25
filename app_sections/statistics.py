@@ -264,6 +264,7 @@ def draw_heatmap(df: pd.DataFrame, x_axis: str, y_axis: str, labels: list[str]) 
     
     if x_axis == "mistake" or y_axis == "mistake":
         df = df[df["mistake"] != "No data"].copy()
+        df = df[df["mistake"] != "No mistake"].copy()
 
     grouped_df = df.groupby([x_axis, y_axis])["profit"].sum().reset_index()
 
