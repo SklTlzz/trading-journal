@@ -2,7 +2,7 @@
 
 ## Trading Journal
 
-## [Open Live Dashboard](https://andrey-trading-journal.streamlit.app/)
+## [Open Live Dashboard](https://andrey-trading-journal.streamlit.app/) | **[Download the full analytical PDF-report (RU version)](https://disk.yandex.ru/i/oLaoQ6SHewAy4w)**
 
 An interactive dashboard for in-depth trading statistics analysis and risk management. The project was built to automate trade tracking, identify profitable/unprofitable patterns, and visualize overall performance.
 
