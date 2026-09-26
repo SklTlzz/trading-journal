@@ -1,3 +1,5 @@
+*Read this in [Russian](README_RU.md)*
+
 ## Trading Journal
 
 ## [Open Live Dashboard](https://andrey-trading-journal.streamlit.app/)
